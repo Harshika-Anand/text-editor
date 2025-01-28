@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef,useState } from "react";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import { jsPDF } from "jspdf";
@@ -8,6 +8,8 @@ import "./Editor.css";
 const Editor = () => {
   const editorRef = useRef(null);
   const quillInstance = useRef(null);
+  const [wordCount, setWordCount] = useState(0);
+  const [charCount, setCharCount] = useState(0);
 
   const saveContent = () => {
     if (quillInstance.current) {
@@ -23,6 +25,12 @@ const Editor = () => {
       localStorage.removeItem("editorContent"); 
       alert("Content reset!");
     }
+  };
+
+  const updateWordCount = (text) => {
+    const words = text.trim().split(/\s+/).filter(Boolean); // Split by spaces and filter out empty strings
+    setWordCount(words.length);
+    setCharCount(text.length);
   };
 
   const exportToPDF = () => {
@@ -63,6 +71,11 @@ const Editor = () => {
       if (savedContent) {
         quillInstance.current.setContents(JSON.parse(savedContent));
       }
+
+      quillInstance.current.on("text-change", () => {
+        const editorText = quillInstance.current.root.innerText; // Get plain text from the editor
+        updateWordCount(editorText);
+      });
     }
   }, []);
 
@@ -79,6 +92,9 @@ const Editor = () => {
         <button onClick={exportToPDF} className="editor-export-button">
           Export to PDF
         </button>
+      </div>
+      <div className="word-count">
+        <span>Words: {wordCount}</span> | <span>Characters: {charCount}</span>
       </div>
     </div>
   );
