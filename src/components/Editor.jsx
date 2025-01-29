@@ -3,7 +3,7 @@ import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import { jsPDF } from "jspdf";
 import html2pdf from "html2pdf.js";
-import { db } from "./firebase"; // Import Firestore
+import { db } from "../firebase"; // Import Firestore
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"; // Firestore functions
 import "./Editor.css";
 

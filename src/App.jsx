@@ -1,13 +1,26 @@
 import React from "react";
-import Editor from "./Editor";
-import "./App.css"
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext"; // Import AuthProvider
+import Signup from "./pages/Signup";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Editor from "./components/Editor";
+import ProtectedRoute from "./components/ProtectedRoute";
+import Home from "./pages/Home"; // Import the Home page
 
 const App = () => {
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Collaborative Text Editor</h1>
-      <Editor />
-    </div>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} /> {/* Home route */}
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/editor/:docId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 };
 
