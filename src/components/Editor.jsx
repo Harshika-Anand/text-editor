@@ -1,163 +1,124 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
-import { jsPDF } from "jspdf";
-import html2pdf from "html2pdf.js";
-import { db } from "../firebase"; // Import Firestore
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"; // Firestore functions
+import { db } from "../firebase"; // Firestore
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { useAuth } from "../context/AuthContext"; // Authentication
+import html2pdf from "html2pdf.js"; // PDF Export
 import "./Editor.css";
 
 const Editor = () => {
+  const { user } = useAuth();
+  const { docId } = useParams(); // Get document ID from URL
+  const navigate = useNavigate();
   const editorRef = useRef(null);
   const quillInstance = useRef(null);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
-  const [docId] = useState("shared-document");
+  const [isOwner, setIsOwner] = useState(false);
 
+  useEffect(() => {
+    if (!quillInstance.current) {
+      quillInstance.current = new Quill(editorRef.current, {
+        theme: "snow",
+        placeholder: "Start writing here...",
+        modules: { toolbar: [["bold", "italic", "underline"], [{ list: "ordered" }, { list: "bullet" }], ["link", "image"]] }
+      });
+
+      const checkOwnership = async () => {
+        const docRef = doc(db, "documents", docId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const docData = docSnap.data();
+          if (docData.userId === user.uid) {
+            setIsOwner(true);
+            quillInstance.current.setContents(docData.content || []);
+          } else {
+            alert("You don't have access to this document!");
+            navigate("/dashboard"); // Redirect unauthorized users
+          }
+        } else {
+          // If the document doesn't exist, create it for the user
+          await setDoc(docRef, { userId: user.uid, content: [] });
+          setIsOwner(true);
+        }
+      };
+
+      checkOwnership();
+
+      // Real-time updates
+      const unsubscribe = onSnapshot(doc(db, "documents", docId), (snapshot) => {
+        if (snapshot.exists() && quillInstance.current) {
+          quillInstance.current.setContents(snapshot.data().content || []);
+        }
+      });
+
+      quillInstance.current.on("text-change", () => {
+        if (isOwner) {
+          setDoc(doc(db, "documents", docId), { userId: user.uid, content: quillInstance.current.getContents() }, { merge: true });
+        }
+        updateWordCount(quillInstance.current.getText());
+      });
+
+      return () => unsubscribe();
+    }
+  }, [docId, user.uid, navigate, isOwner]);
+
+  // Save Content Manually
   const saveContent = async () => {
-    if (quillInstance.current) {
+    if (quillInstance.current && isOwner) {
       const content = quillInstance.current.getContents();
-
-      await setDoc(
-        doc(db, "documents", docId),
-        { content: content.ops },
-        { merge: true }
-      );
+      await setDoc(doc(db, "documents", docId), { content: content.ops }, { merge: true });
       alert("Content saved!");
     }
   };
 
-  const resetContent = () => {
-    if (window.confirm("Are you sure you want to reset all content?")) {
+  // Reset Document Content
+  const resetContent = async () => {
+    if (window.confirm("Are you sure you want to reset this document?")) {
       if (quillInstance.current) {
         quillInstance.current.setContents([]);
-        localStorage.removeItem("editorContent");
-        setDoc(doc(db, "documents", docId), { content: [] });
-        alert("Content reset!");
+        await setDoc(doc(db, "documents", docId), { content: [] }, { merge: true });
+        alert("Document reset!");
       }
     }
   };
 
+  // Export to PDF
+  const exportToPDF = () => {
+    if (quillInstance.current) {
+      const editorContent = quillInstance.current.root.innerHTML;
+      const options = {
+        margin: 10,
+        filename: "document.pdf",
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      };
+      html2pdf().set(options).from(editorContent).save();
+    }
+  };
+
+  // Word & Character Count
   const updateWordCount = (text) => {
     const words = text.trim().length > 0 ? text.trim().split(/\s+/) : [];
     setWordCount(words.length);
     setCharCount(text.length);
   };
 
-  const exportToPDF = () => {
-    if (quillInstance.current) {
-      const editorContent = quillInstance.current.root.innerHTML;
-
-      const options = {
-        margin: [10, 10, 10, 10],
-        filename: "editor_content.pdf",
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      };
-
-      html2pdf().set(options).from(editorContent).save();
-    }
-  };
-
-  useEffect(() => {
-    if (!quillInstance.current) {
-      const toolbarOptions = [
-        ["bold", "italic", "underline"],
-        [{ header: [1, 2, 3, false] }],
-        [{ list: "ordered" }, { list: "bullet" }],
-        ["link", "image"],
-        ["clean"],
-      ];
-  
-      quillInstance.current = new Quill(editorRef.current, {
-        theme: "snow",
-        placeholder: "Start writing here...",
-        modules: {
-          toolbar: toolbarOptions,
-        },
-        formats: ["direction"], // Allow text direction formatting
-      });
-  
-      quillInstance.current.format("direction", "ltr"); // Set to Left-to-Right
-  
-      // Load content from Firestore
-      const loadContent = async () => {
-        const docRef = doc(db, "documents", docId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          quillInstance.current.setContents(docSnap.data().content);
-          // Ensure the cursor is at the end after loading content
-          setTimeout(() => {
-            const length = quillInstance.current.getLength();
-            quillInstance.current.setSelection(length, 0); // Move cursor to the end
-          }, 0);
-        }
-      };
-      loadContent();
-  
-      // Listen for Firestore changes in real time
-      const unsubscribe = onSnapshot(doc(db, "documents", docId), (snapshot) => {
-        if (snapshot.exists() && quillInstance.current) {
-          const newContent = snapshot.data().content;
-          const quill = quillInstance.current;
-  
-          // Save cursor position before update
-          const selection = quill.getSelection();
-          const currentContent = quill.getContents();
-  
-          // Only update if Firestore content is actually different
-          if (JSON.stringify(newContent) !== JSON.stringify(currentContent.ops)) {
-            quill.setContents(newContent, 'silent'); // 'silent' prevents triggering another text-change event
-  
-            // Restore cursor position smoothly
-            setTimeout(() => {
-              if (selection) {
-                quill.setSelection(selection.index, selection.length);
-              }
-            }, 0);
-          }
-        }
-      });
-  
-      // Sync changes to Firestore
-      quillInstance.current.on("text-change", () => {
-        const quill = quillInstance.current;
-        const content = quill.getContents();
-  
-        // Save cursor position
-        const selection = quill.getSelection();
-  
-        setDoc(doc(db, "documents", docId), { content: content.ops }, { merge: true });
-  
-        // Always move cursor to the end after a change
-        setTimeout(() => {
-          const length = quill.getLength();
-          quill.setSelection(length, 0); // Move cursor to the end
-        }, 0);
-  
-        const editorText = quill.root.innerText;
-        updateWordCount(editorText);
-      });
-  
-      return () => unsubscribe(); // Cleanup Firestore listener on unmount
-    }
-  }, []);
-  
-
   return (
     <div className="editor-container">
+      <h2>Editing Document: {docId}</h2>
       <div ref={editorRef} className="editor-box" />
+
+      {/* Action Buttons */}
       <div className="editor-buttons">
-        <button onClick={saveContent} className="editor-save-button">
-          Save Content
-        </button>
-        <button onClick={resetContent} className="editor-reset-button">
-          Reset Content
-        </button>
-        <button onClick={exportToPDF} className="editor-export-button">
-          Export to PDF
-        </button>
+        <button onClick={saveContent} className="editor-save-button">Save</button>
+        <button onClick={resetContent} className="editor-reset-button">Reset</button>
+        <button onClick={exportToPDF} className="editor-export-button">Export to PDF</button>
       </div>
+
+      {/* Word Count */}
       <div className="word-count">
         <span>Words: {wordCount}</span> | <span>Characters: {charCount}</span>
       </div>

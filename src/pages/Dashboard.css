@@ -1,70 +1,99 @@
 .dashboard-container {
-    padding: 20px;
-    font-family: Arial, sans-serif;
-  }
-  
-  h2 {
-    font-size: 24px;
-    margin-bottom: 20px;
-  }
-  
-  .dashboard-buttons {
-    margin-bottom: 20px;
-  }
-  
-  .btn {
-    padding: 10px 20px;
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 5px;
-    border: none;
-    margin-right: 10px;
-  }
-  
-  .create-btn {
-    background-color: #007bff;
-    color: white;
-  }
-  
-  .create-btn:hover {
-    background-color: #0056b3;
-  }
-  
-  .logout-btn {
-    background-color: #dc3545;
-    color: white;
-  }
-  
-  .logout-btn:hover {
-    background-color: #c82333;
-  }
-  
-  h3 {
-    font-size: 20px;
-    margin-bottom: 10px;
-  }
-  
-  .document-list {
-    list-style: none;
-    padding: 0;
-  }
-  
-  .document-item {
-    padding: 10px;
-    background-color: #f9f9f9;
-    border-radius: 5px;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-  }
-  
-  .document-item a {
-    text-decoration: none;
-    color: #007bff;
-    font-size: 18px;
-  }
-  
-  .document-item a:hover {
-    text-decoration: underline;
-  }
-  
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+h2 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.dashboard-buttons {
+  margin-bottom: 20px;
+}
+
+.btn {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 5px;
+  border: none;
+  margin-right: 10px;
+  transition: background 0.3s ease-in-out;
+}
+
+.create-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.create-btn:hover {
+  background-color: #0056b3;
+}
+
+.logout-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.logout-btn:hover {
+  background-color: #c82333;
+}
+
+h3 {
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.document-list {
+  list-style: none;
+  padding: 0;
+}
+
+.document-item {
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid #ddd;
+}
+
+.document-title-input {
+  flex-grow: 1;
+  font-size: 16px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  outline: none;
+}
+
+.document-title-input:focus {
+  border-color: #007bff;
+}
+
+.edit-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #218838;
+}
+
+.delete-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}
+.document-date {
+  font-size: 14px;
+  color: gray;
+  margin-right: auto;
+}

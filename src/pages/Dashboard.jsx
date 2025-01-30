@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import "./Dashboard.css"; // Import CSS for Dashboard
 
 const Dashboard = () => {
@@ -38,6 +38,20 @@ const Dashboard = () => {
     navigate(`/editor/${docRef.id}`);
   };
 
+  const handleEditTitle = async (docId, newTitle) => {
+    await updateDoc(doc(db, "documents", docId), { title: newTitle });
+    setDocuments(prevDocs =>
+      prevDocs.map(doc => (doc.id === docId ? { ...doc, title: newTitle } : doc))
+    );
+  };
+
+  const handleDeleteDocument = async (docId) => {
+    if (window.confirm("Are you sure you want to delete this document?")) {
+      await deleteDoc(doc(db, "documents", docId));
+      setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== docId));
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <h2>Welcome, {user.username}!</h2>
@@ -49,7 +63,18 @@ const Dashboard = () => {
       <ul className="document-list">
         {documents.map(doc => (
           <li key={doc.id} className="document-item">
-            <a href={`/editor/${doc.id}`}>{doc.title}</a>
+            <input
+              type="text"
+              value={doc.title}
+              onChange={(e) => handleEditTitle(doc.id, e.target.value)}
+              className="document-title-input"
+            />
+           
+            <button onClick={() => navigate(`/editor/${doc.id}`)} className="btn edit-btn">Edit</button>
+            <button onClick={() => handleDeleteDocument(doc.id)} className="btn delete-btn">Delete</button>
+            <span className="document-date">
+              {new Date(doc.createdAt?.seconds * 1000).toLocaleString()}
+            </span>
           </li>
         ))}
       </ul>

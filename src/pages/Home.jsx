@@ -6,7 +6,7 @@ import "./Home.css"; // Import Home-specific CSS
 const Home = () => {
   return (
     <div className="home-container">
-      <h1>Welcome to the App!</h1>
+      <h1>Text Editor App</h1>
       <p>Get started by signing up or logging in.</p>
       <div>
         <Link to="/signup">Sign Up</Link> | <Link to="/login">Log In</Link>
