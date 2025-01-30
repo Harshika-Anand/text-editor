@@ -16,7 +16,10 @@ const Editor = () => {
   const quillInstance = useRef(null);
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const isViewer = new URLSearchParams(window.location.search).get("access") === "viewer";
+  const [docTitle, setDocTitle] = useState("Loading...");
 
   useEffect(() => {
     if (!quillInstance.current) {
@@ -31,13 +34,9 @@ const Editor = () => {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const docData = docSnap.data();
-          if (docData.userId === user.uid) {
-            setIsOwner(true);
-            quillInstance.current.setContents(docData.content || []);
-          } else {
-            alert("You don't have access to this document!");
-            navigate("/dashboard"); // Redirect unauthorized users
-          }
+          setIsOwner(docData.userId === user.uid);
+          setDocTitle(docData.title || "Untitled Document");
+          quillInstance.current.setContents(docData.content || []);
         } else {
           // If the document doesn't exist, create it for the user
           await setDoc(docRef, { userId: user.uid, content: [] });
@@ -51,19 +50,34 @@ const Editor = () => {
       const unsubscribe = onSnapshot(doc(db, "documents", docId), (snapshot) => {
         if (snapshot.exists() && quillInstance.current) {
           quillInstance.current.setContents(snapshot.data().content || []);
+          setDocTitle(snapshot.data.title || "Untitled Document");
         }
       });
 
-      quillInstance.current.on("text-change", () => {
+      // Track text changes for saving & word count
+      quillInstance.current.on("text-change", async () => {
         if (isOwner) {
-          setDoc(doc(db, "documents", docId), { userId: user.uid, content: quillInstance.current.getContents() }, { merge: true });
+          setIsSaving(true);
+          const content = quillInstance.current.getContents();
+          await setDoc(doc(db, "documents", docId), { userId: user.uid, content }, { merge: true });
+
+          setTimeout(() => setIsSaving(false), 1000);
         }
+
+        // Update word & character count
         updateWordCount(quillInstance.current.getText());
       });
 
       return () => unsubscribe();
     }
-  }, [docId, user.uid, navigate, isOwner]);
+  }, [docId, user.uid, navigate]);
+
+  // Update Word & Character Count
+  const updateWordCount = (text) => {
+    const words = text.trim().length > 0 ? text.trim().split(/\s+/) : [];
+    setWordCount(words.length);
+    setCharCount(text.length);
+  };
 
   // Save Content Manually
   const saveContent = async () => {
@@ -99,16 +113,18 @@ const Editor = () => {
     }
   };
 
-  // Word & Character Count
-  const updateWordCount = (text) => {
-    const words = text.trim().length > 0 ? text.trim().split(/\s+/) : [];
-    setWordCount(words.length);
-    setCharCount(text.length);
+  // Share Document Link
+  const handleShare = () => {
+    const shareableLink = `${window.location.origin}/editor/${docId}?access=viewer`;
+    navigator.clipboard.writeText(shareableLink);
+    alert("Shareable link copied to clipboard!");
   };
 
   return (
     <div className="editor-container">
-      <h2>Editing Document: {docId}</h2>
+      <h2>Editing Document: {docTitle}</h2>
+
+      {isSaving && <span className="saving-indicator">Saving...</span>}
       <div ref={editorRef} className="editor-box" />
 
       {/* Action Buttons */}
@@ -116,8 +132,11 @@ const Editor = () => {
         <button onClick={saveContent} className="editor-save-button">Save</button>
         <button onClick={resetContent} className="editor-reset-button">Reset</button>
         <button onClick={exportToPDF} className="editor-export-button">Export to PDF</button>
+        {!isViewer && (
+          <button onClick={handleShare} className="share-button">Share</button>
+        )}
       </div>
-
+     
       {/* Word Count */}
       <div className="word-count">
         <span>Words: {wordCount}</span> | <span>Characters: {charCount}</span>

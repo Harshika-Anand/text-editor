@@ -21,7 +21,7 @@
   }
   
   .editor-save-button,
-  .editor-reset-button,.editor-export-button {
+  .editor-reset-button,.editor-export-button,.share-button {
     margin: 5px;
     padding: 10px 20px;
     background-color: #007bff;
